@@ -1197,6 +1197,247 @@ Mat inchidere(Mat src) {
 	return mat2;
 }
 
+void medieDeviatie() {
+	char fname[MAX_PATH];
+
+	while (openFileDlg(fname))
+	{
+		Mat src = imread(fname, IMREAD_GRAYSCALE);
+		int height = src.rows;
+		int width = src.cols;
+		int M = height * width;
+
+		int hist[256] = { 0 };
+		for (int i = 0; i < height; i++)
+		{
+			for (int j = 0; j < width; j++)
+			{
+				hist[src.at<uchar>(i, j)]++;
+			}
+		}
+
+		float g = 0;
+
+		for (int i = 0; i < 256; i++)
+		{
+			g = g + (i * hist[i]);
+		}
+		g = (float)g / M;
+
+
+		float deviation = 0.0;
+		for (int i = 0; i < 256; i++)
+		{
+			deviation = deviation + ((float)(i - g) * (i - g) * hist[i]);
+
+		}
+		deviation = (float)deviation / M;
+		deviation = sqrt(deviation);
+
+		int histC[256] = { 0 };
+		for (int i = 0; i < 256; i++)
+		{
+			for (int j = 0; j < i; j++)
+			{
+				histC[i] += hist[j];
+			}
+		}
+
+
+		std::cout << "Media: " << g << '\n';
+		std::cout << "Deviatia: " << deviation << '\n';
+
+		showHistogram("Histograma", hist, 255, 255);
+		showHistogram("Histograma cumulativa", histC, 255, 255);
+
+	}
+}
+
+void binarizareImagine() {
+	char fname[MAX_PATH];
+	
+	while (openFileDlg(fname)) {
+		Mat src = imread(fname, IMREAD_GRAYSCALE);
+		int height = src.rows;
+		int width = src.cols;
+
+		int hist[256] = { 0 };
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				hist[src.at<uchar>(i, j)]++;
+			}
+		}
+
+		int iMin = INT_MAX;
+		int iMax = INT_MIN;
+
+		for (int i = 0; i < 256; i++) {
+			if (hist[i] > 0) {
+				iMin = i;
+				break;
+			}
+		}
+
+		for (int i = 255; i >= 0; i--) {
+			if (hist[i] > 0) {
+				iMax = i;
+				break;
+			}
+		}
+
+		std::cout << "iMin: " << iMin << '\n';
+		std::cout << "iMax: " << iMax << '\n';
+
+
+		float treshold = (iMin + iMax) / 2.0;
+		float prevTreshold;
+		do{
+			float u1 = 0, u2 = 0;
+			float g1 = 0, g2 = 0;
+			for (int i = iMin; i < treshold; i++) {
+				g1 += i * hist[i];
+				u1 += hist[i];
+			}
+
+			for (int i = treshold; i <= iMax; i++) {
+				g2 += i * hist[i];
+				u2 += hist[i];
+			}
+
+			g1 /= u1;
+			g2 /= u2;
+			prevTreshold = treshold;
+			treshold = (g1 + g2) / 2.0;
+
+		} while (abs(treshold - prevTreshold) > 0.1);
+
+		Mat dst(height, width, CV_8UC1, Scalar(255));
+
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
+				if (src.at<uchar>(i, j) >= treshold) {
+					dst.at<uchar>(i, j) = 255;
+				}
+				else if (src.at<uchar>(i, j) < treshold) {
+					dst.at<uchar>(i, j) = 0;
+				}
+
+			}
+		}
+
+		imshow("Original", src);
+		imshow("Binarizata", dst);
+		waitKey(0);
+	}
+}
+
+void brightnessContrast(int gOutMin, int gOutMax, int brighnessAmount) {
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat src = imread(fname, IMREAD_GRAYSCALE);
+		int height = src.rows;
+		int width = src.cols;
+		Mat dstAfterBrightness(src.rows, src.cols, CV_8UC1, Scalar(255));
+
+		for (int i = 0; i < height; i++)
+		{
+			for (int j = 0; j < width; j++)
+			{
+				int pixel = src.at<uchar>(i, j) + brighnessAmount;
+				if (pixel > 255)  dstAfterBrightness.at<uchar>(i, j) = 255;
+				else {
+					if (sum < 0) dstAfterBrightness.at<uchar>(i, j) = 0;
+					else dstAfterBrightness.at<uchar>(i, j) = pixel;
+				}
+			}
+		}
+
+		int hist[256] = { 0 };
+		for (int i = 0; i < height; i++)
+		{
+			for (int j = 0; j < width; j++)
+			{
+				hist[src.at<uchar>(i, j)]++;
+			}
+		}
+
+		int gInMin = INT_MAX;
+		int gInMax = INT_MIN;
+
+		for (int i = 0; i < height; i++)
+		{
+			for (int j = 0; j < width; j++)
+			{
+				if (src.at<uchar>(i, j) < gInMin) {
+					gInMin = src.at<uchar>(i, j);
+				}
+				if (src.at<uchar>(i, j) > gInMax) {
+					gInMax = src.at<uchar>(i, j);
+				}
+
+			}
+		}
+
+		Mat dstAfterContrast(src.rows, src.cols, CV_8UC1, Scalar(255));
+
+		float rap = (float)(gOutMax - gOutMin) / (gInMax - gInMin);
+
+		for (int i = 0; i < height; i++)
+		{
+			for (int j = 0; j < width; j++)
+			{
+				int gIn = src.at<uchar>(i, j);
+				int gOut = gOutMin + (gIn - gInMin) * rap;
+				if (gOut > 255)
+				{
+					dstAfterContrast.at<uchar>(i, j) = 255;
+
+				}
+				else {
+
+					if (sum < 0)
+					{
+						dstAfterContrast.at<uchar>(i, j) = 0;
+
+					}
+					else
+					{
+						dstAfterContrast.at<uchar>(i, j) = gOut;
+					}
+				}
+			}
+		}
+
+		int histBrightness[256] = { 0 };
+		for (int i = 0; i < height; i++)
+		{
+			for (int j = 0; j < width; j++)
+			{
+				histBrightness[dstAfterBrightness.at<uchar>(i, j)]++;
+			}
+		}
+
+		int histContrast[256] = { 0 };
+		for (int i = 0; i < height; i++)
+		{
+			for (int j = 0; j < width; j++)
+			{
+				histContrast[dstAfterContrast.at<uchar>(i, j)]++;
+			}
+		}
+		imshow("Initial image", src);
+		imshow("After Brightness", dstAfterBrightness);
+		imshow("After Contrast", dstAfterContrast);
+		showHistogram("MyHist", hist, 256, 256);
+		showHistogram("MyHist Brightness", histBrightness, 256, 256);
+		showHistogram("MyHist Contrast", histContrast, 256, 256);
+		waitKey(0);
+
+	}
+}
+
+
 void testMouseClick()
 {
 	Mat src;
@@ -1261,6 +1502,9 @@ int main()
 		printf(" 28 - Deschidere\n");
 		printf(" 29 - Inchidere\n");
 		printf(" 30 - Dilatare, Eroziune, Deschidere, Inchidere\n");
+		printf(" 31 - Standard Deviation\n");
+		printf(" 32 - Binarizare imagine\n");
+		printf(" 33 - Brightness & Contrast\n");
 		printf(" 0 - Exit\n\n");
 		printf("Option: ");
 		scanf("%d", &op);
@@ -1460,6 +1704,27 @@ int main()
 				imshow("Inchidere", inch1);
 				waitKey(0);
 			} 
+		}
+
+		case 31: {
+			medieDeviatie();
+			break;
+		}
+
+		case 32: {
+			binarizareImagine();
+			break;
+		}
+
+		case 33: {
+			int gIn;
+			int gOut;
+			int brightnessAmount;
+			std::cout << "gIn: "; std::cin >> gIn;
+			std::cout << "gOut: "; std::cin >> gOut;
+			std::cout << "Brightness Amount: "; std::cin >> brightnessAmount;
+			brightnessContrast(gIn, gOut, brightnessAmount);
+			break;
 		}
 		
 		}
