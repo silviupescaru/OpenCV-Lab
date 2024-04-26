@@ -1437,6 +1437,243 @@ void brightnessContrast(int gOutMin, int gOutMax, int brighnessAmount) {
 	}
 }
 
+cv::Mat convolutie(Mat src, int nucleu[][3], int scalar, bool aritmetic) {
+	Mat dst = src.clone();
+
+
+	for (int i = 1; i < src.rows - 1; i++) {
+		for (int j = 1; j < src.cols - 1; j++) {
+			int sum = 0;
+			for (int k = 0; k < 3; k++) {
+				for (int l = 0; l < 3; l++) {
+					int pixel = src.at<uchar>(i + k - 1, j + l - 1);
+					int filter = nucleu[k][l] * pixel;
+					sum += filter;
+				}
+			}
+
+			if (aritmetic == false) {
+				if (scalar == 0) {
+					if (sum < 0) {
+						dst.at<uchar>(i, j) = 0;
+					}
+					else if (sum > 255) {
+						dst.at<uchar>(i, j) = 255;
+					}
+					else {
+						dst.at<uchar>(i, j) = sum;
+					}
+				}
+				else {
+					if (sum < 0) {
+						dst.at<uchar>(i, j) = 0;
+					}
+					else if (sum > 255) {
+						dst.at<uchar>(i, j) = 255;
+					}
+					else {
+						dst.at<uchar>(i, j) = sum / scalar;
+					}
+				}
+			}
+			else {
+				dst.at<uchar>(i, j) = sum / scalar;
+			}
+
+		}
+	}
+
+	return dst;
+}
+
+int calculScalar(int nucleu[][3])
+{
+	int sum = 0;
+
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			sum += nucleu[i][j];
+		}
+	}
+
+	return sum;
+}
+
+int calculScalarTreceSus(int nucleu[][3])
+{
+	int sum1 = 0;
+	int sum2 = 0;
+
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			if (nucleu[i][j] < 0) {
+				sum1 += abs(nucleu[i][j]);
+			} else
+			sum2 += nucleu[i][j];
+		}
+	}
+
+	int scalar = max(sum1, sum2);
+	return scalar;
+}
+
+
+void filtruAritmetic()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat src = imread(fname, IMREAD_GRAYSCALE);
+		int nucleu[3][3] = { {1, 1, 1},
+							 {1, 1, 1},
+							 {1, 1, 1} };
+		int scalar = calculScalar(nucleu);
+
+		Mat dst = convolutie(src, nucleu, scalar, true);
+
+		imshow("Original", src);
+		imshow("Filtru Aritmetic", dst);
+		waitKey(0);
+	}
+}
+
+void filtruGaussian()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat src = imread(fname, IMREAD_GRAYSCALE);
+		int nucleu[3][3] = { {1, 2, 1},
+							 {2, 4, 2},
+							 {1, 2, 1} };
+		int scalar = calculScalar(nucleu);
+
+
+		Mat dst = convolutie(src, nucleu, scalar, true);
+
+		imshow("Original", src);
+		imshow("Filtru Gaussian", dst);
+		waitKey(0);
+
+
+	}
+}
+
+void filtruLaplace()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat src = imread(fname, IMREAD_GRAYSCALE);
+		int nucleu[3][3] = { {-1, -1, -1},
+							 {-1,  8, -1},
+							 {-1, -1 , -1} };
+		int scalar = calculScalar(nucleu);
+
+		Mat dst = convolutie(src, nucleu, scalar, false);
+
+		imshow("Original", src);
+		imshow("Filtru Laplace", dst);
+		waitKey(0);
+
+
+	}
+}
+
+void filtruTreceSus()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat src = imread(fname, IMREAD_GRAYSCALE);
+		int nucleu[3][3] = { {-1, -1, -1},
+							 {-1,  9, -1},
+							 {-1, -1 , -1} };
+		int scalar = calculScalarTreceSus(nucleu);
+
+		Mat dst = convolutie(src, nucleu, scalar, false);
+
+		imshow("Original", src);
+		imshow("Filtru Trece Sus", dst);
+		waitKey(0);
+
+
+	}
+}
+
+void centering_transform(Mat img) {
+	for (int i = 0; i < img.rows; i++) {
+		for (int j = 0; j < img.cols; j++) {
+			img.at<float>(i, j) = ((i + j) & 1) ? -img.at<float>(i, j) : img.at<float>(i, j);
+		}
+	}
+}
+
+Mat sablon(Mat src) {
+	Mat srcf(src.rows, src.cols, CV_32FC1); //stocam imaginea sursa ca float
+	src.convertTo(srcf, CV_32FC1);
+
+	centering_transform(srcf); //centram imaginea, pentru a o putea procesa in domeniul frecvential
+
+	Mat fourier; //cream o matrice de numere complexe in care sa stocam transformata fourier directa
+	dft(srcf, fourier, DFT_COMPLEX_OUTPUT); //aplicam transformata fourier directa pe imaginea sursa si rezultatul va fi stocat in matricea "fourier" de numere complexe
+
+	//dorim sa desfacem numerele complexe din matricea "fourier" in doua matrici, una cu partile reale si una cu partile imaginare ale numerelor 
+	Mat channels[] = { Mat::zeros(src.size(),CV_32F),Mat::zeros(src.size(),CV_32F) };
+	split(fourier, channels);//separam partea reala de partea imaginara
+	//in matricea channels[0] avem matricea care contine partile reale ale numerelor din "fourier"
+	//in matricea channels[1] avem partea imaginara a numerelor
+
+			//calculul magnitudinii
+	Mat mag;
+	magnitude(channels[0], channels[1], mag);
+	for (int i = 0; i < src.rows; i++) {
+		for (int j = 0; j < src.rows; j++) {
+			log(mag.at<float>(i, j) + 1);
+		}
+	}
+	//parcurgem matricea "mag" si aplicam log(mag.at<float>(i, j) + 1) pe fiecare element
+	//aplicam functia normalize pe matricea mag si o afisam
+	//calculul fazei
+	Mat phi;
+	phase(channels[0], channels[1], phi);
+
+	//aici aplicam filtre (R=20 sau A=20)
+	//parcurgem imaginea (0->H, 0->W) si aplicam modificarile pe channels[0] si channels[1]
+	//pentru gauss putem folosi functia exp(exponent)
+
+
+
+
+		//exemplu pentru filtru gaussian low pass
+	int H = src.rows;
+	int W = src.cols;
+	int A = 20;
+	for (int i = 0; i < H; i++) {
+		for (int j = 0; j < W; j++) {
+			channels[0].at<float>(i, j) *= exp(-((H / 2 - i) * (H / 2 - i) + (W / 2 - j) * (W / 2 - j)) / (A * A));
+			channels[1].at<float>(i, j) *= exp(-((H / 2 - i) * (H / 2 - i) + (W / 2 - j) * (W / 2 - j)) / (A * A));
+		}
+	}
+
+	Mat dst, dstf;
+	merge(channels, 2, fourier); //reunim cele doua canale (real si imaginar), pentru a pregati matricea de revenirea in domeniul spatial
+	dft(fourier, dstf, DFT_INVERSE | DFT_REAL_OUTPUT | DFT_SCALE); //aplicam transformata fourier inversa pentru a reveni in domeniul spatial
+	//in matricea dstf avem rezultatul transformatei fourier inverse
+
+	centering_transform(dstf); //recentram imaginea, pentru a o vizualiza usor in domeniul spatial
+	normalize(dstf, dst, 0, 255, NORM_MINMAX, CV_8UC1); //normalizam matricea, ca sa nu avem valori in afara intervalului 0-255; punem rezultatul in dst
+
+	imshow("initial", src);
+	imshow("final", dst);
+	waitKey();
+
+	return dst;
+}
 
 void testMouseClick()
 {
@@ -1505,6 +1742,10 @@ int main()
 		printf(" 31 - Standard Deviation\n");
 		printf(" 32 - Binarizare imagine\n");
 		printf(" 33 - Brightness & Contrast\n");
+		printf(" 34 - Filtru aritmetica\n");
+		printf(" 35 - Filtru Gaussian\n");
+		printf(" 36 - Filtru Laplace\n");
+		printf(" 37 - Filtru Trece Sus\n");
 		printf(" 0 - Exit\n\n");
 		printf("Option: ");
 		scanf("%d", &op);
@@ -1724,6 +1965,26 @@ int main()
 			std::cout << "gOut: "; std::cin >> gOut;
 			std::cout << "Brightness Amount: "; std::cin >> brightnessAmount;
 			brightnessContrast(gIn, gOut, brightnessAmount);
+			break;
+		}
+		
+		case 34: {
+			filtruAritmetic();
+			break;
+		}
+
+		case 35: {
+			filtruGaussian();
+			break;
+		}
+
+		case 36: {
+			filtruLaplace();
+			break;
+		}
+
+		case 37: {
+			filtruTreceSus();
 			break;
 		}
 		
