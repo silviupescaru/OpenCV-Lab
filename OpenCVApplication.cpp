@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "common.h"
+#include <cmath>
 #include <queue>
 #include <opencv2/core/utils/logger.hpp>
 
@@ -595,70 +596,70 @@ void praguriMultiple() {
 	char fname[256] = "C:/Users/mike/Desktop/Images/cameraman.bmp";
 	int WH = 5;
 	float TH = 0.0003f;
-		Mat src = imread(fname, cv::IMREAD_GRAYSCALE);
-		int height = src.rows;
-		int width = src.cols;
-		Mat dst = Mat(height, width, CV_8UC1);
+	Mat src = imread(fname, cv::IMREAD_GRAYSCALE);
+	int height = src.rows;
+	int width = src.cols;
+	Mat dst = Mat(height, width, CV_8UC1);
 
-		int list[256] = { 0 };
-		for (int i = 0; i < height; i++) {
-			for (int j = 0; j < width; j++) {
-				uchar g = src.at<uchar>(i, j);
-				list[g] = list[g] + 1;
+	int list[256] = { 0 };
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			uchar g = src.at<uchar>(i, j);
+			list[g] = list[g] + 1;
+		}
+	}
+
+	float FDP[256] = { 0.0 };
+	int M = height * width;
+	for (int i = 0; i < 256; i++) {
+		FDP[i] = ((float)list[i]) / ((float)M);
+	}
+	std::vector<uchar> vf, mijloace;
+	vf.push_back(0);
+	mijloace.push_back(0);
+
+	for (int i = WH; i <= 255 - WH; i++) {
+		float medie = 0.0;
+		int max = 1;
+		for (int j = 0; j < 2 * WH + 1; j++) {
+			medie += FDP[i + j - WH];
+			if (FDP[i + j - WH] > FDP[i]) {
+				max = 0;
 			}
 		}
 
-		float FDP[256] = { 0.0 };
-		int M = height * width;
-		for (int i = 0; i < 256; i++) {
-			FDP[i] = ((float)list[i]) / ((float)M);
+		medie = medie / ((float)(2 * WH + 1));
+
+		if (max && FDP[i] > medie + TH) {
+			vf.push_back(i);
 		}
-		std::vector<uchar> vf, mijloace;
-		vf.push_back(0);
-		mijloace.push_back(0);
+	}
 
-		for (int i = WH; i <= 255 - WH; i++) {
-			float medie = 0.0;
-			int max = 1;
-			for (int j = 0; j < 2 * WH + 1; j++) {
-				medie += FDP[i + j - WH];
-				if (FDP[i + j - WH] > FDP[i]) {
-					max = 0;
-				}
-			}
+	vf.push_back(255);
 
-			medie = medie / ((float)(2 * WH + 1));
-
-			if (max && FDP[i] > medie + TH) {
-				vf.push_back(i);
-			}
-		}
-
-		vf.push_back(255);
-
-		for (int i = 0; i < height; i++)
+	for (int i = 0; i < height; i++)
+	{
+		for (int j = 0; j < width; j++)
 		{
-			for (int j = 0; j < width; j++)
+			uchar current = src.at<uchar>(i, j);
+			for (int k = 0; k < vf.size(); k++)
 			{
-				uchar current = src.at<uchar>(i, j);
-				for (int k = 0; k < vf.size(); k++)
+				if (current >= vf[k] && current <= vf[k + 1])
 				{
-					if (current >= vf[k] && current <= vf[k + 1])
-					{
-						if (current - vf[k] < vf[k + 1] - current)
-							dst.at<uchar>(i, j) = vf[k];
-						else
-							dst.at<uchar>(i, j) = vf[k + 1];
-					}
-
+					if (current - vf[k] < vf[k + 1] - current)
+						dst.at<uchar>(i, j) = vf[k];
+					else
+						dst.at<uchar>(i, j) = vf[k + 1];
 				}
+
 			}
 		}
-		showHistogram("Histograma", list, width, height);
-		cv::imshow("Praguri Multiple", dst);
-		cv::imshow("Initial", src);
-		cv::waitKey();
-	
+	}
+	showHistogram("Histograma", list, width, height);
+	cv::imshow("Praguri Multiple", dst);
+	cv::imshow("Initial", src);
+	cv::waitKey();
+
 }
 
 void floydSteinberg() {
@@ -666,128 +667,134 @@ void floydSteinberg() {
 	float TH = 0.0003f;
 	char fname[MAX_PATH] = "C:/Users/mike/Desktop/Images/saturn.bmp";
 
-		Mat src = imread(fname, IMREAD_GRAYSCALE);
-		int height = src.rows;
-		int width = src.cols;
-		Mat dst = Mat(height, width, CV_8UC1);
-		Mat dstFin = Mat(height, width, CV_8UC1);
+	Mat src = imread(fname, IMREAD_GRAYSCALE);
+	int height = src.rows;
+	int width = src.cols;
+	Mat dst = Mat(height, width, CV_8UC1);
+	Mat dstFin = Mat(height, width, CV_8UC1);
 
-		int list[256] = { 0 };
-		for (int i = 0; i < height; i++) {
-			for (int j = 0; j < width; j++) {
-				uchar g = src.at<uchar>(i, j);
-				list[g] = list[g] + 1;
+	int list[256] = { 0 };
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			uchar g = src.at<uchar>(i, j);
+			list[g] = list[g] + 1;
+		}
+	}
+
+	float FDP[256] = { 0.0 };
+	int M = height * width;
+	for (int i = 0; i < 256; i++) {
+		FDP[i] = ((float)list[i]) / ((float)M);
+	}
+	std::vector<uchar> vf, mijloace;
+	vf.push_back(0);
+	mijloace.push_back(0);
+
+	for (int i = WH; i <= 255 - WH; i++) {
+		float medie = 0.0;
+		int max = 1;
+		for (int j = 0; j < 2 * WH + 1; j++) {
+			medie += FDP[i + j - WH];
+			if (FDP[i + j - WH] > FDP[i]) {
+				max = 0;
 			}
 		}
 
-		float FDP[256] = { 0.0 };
-		int M = height * width;
-		for (int i = 0; i < 256; i++) {
-			FDP[i] = ((float)list[i]) / ((float)M);
-		}
-		std::vector<uchar> vf, mijloace;
-		vf.push_back(0);
-		mijloace.push_back(0);
+		medie = medie / ((float)(2 * WH + 1));
 
-		for (int i = WH; i <= 255 - WH; i++) {
-			float medie = 0.0;
-			int max = 1;
-			for (int j = 0; j < 2 * WH + 1; j++) {
-				medie += FDP[i + j - WH];
-				if (FDP[i + j - WH] > FDP[i]) {
-					max = 0;
+		if (max && FDP[i] > medie + TH) {
+			vf.push_back(i);
+		}
+	}
+
+	vf.push_back(255);
+
+	for (int i = 0; i < height; i++) {
+		for (int j = 0; j < width; j++) {
+			uchar current = src.at<uchar>(i, j);
+			for (int k = 0; k < vf.size(); k++) {
+				if (current >= vf[k] && current <= vf[k + 1]) {
+					if (current - vf[k] < vf[k + 1] - current)
+						dst.at<uchar>(i, j) = vf[k];
+					else
+						dst.at<uchar>(i, j) = vf[k + 1];
+				}
+
+			}
+		}
+	}
+
+	dstFin = dst.clone();
+
+	int a;
+	for (int i = 0; i < height - 1; i++) {
+		for (int j = 0; j < width - 1; j++) {
+			uchar oldpixel = src.at<uchar>(i, j);
+			uchar newpixel = dst.at<uchar>(i, j);
+
+			int error = oldpixel - newpixel;
+
+			if (isInside2(i, j + 1, dstFin) == 1) {
+				a = dstFin.at<uchar>(i, j + 1) + (7 * error / 16);
+				if (a > 255) {
+					dstFin.at<uchar>(i, j + 1) = 255;
+				}
+				else if (a < 0) {
+					dstFin.at<uchar>(i, j + 1) = 0;
+				}
+				else {
+					dstFin.at<uchar>(i, j + 1) = a;
 				}
 			}
 
-			medie = medie / ((float)(2 * WH + 1));
-
-			if (max && FDP[i] > medie + TH) {
-				vf.push_back(i);
-			}
-		}
-
-		vf.push_back(255);
-
-		for (int i = 0; i < height; i++){
-			for (int j = 0; j < width; j++){
-				uchar current = src.at<uchar>(i, j);
-				for (int k = 0; k < vf.size(); k++){
-					if (current >= vf[k] && current <= vf[k + 1]){
-						if (current - vf[k] < vf[k + 1] - current)
-							dst.at<uchar>(i, j) = vf[k];
-						else
-							dst.at<uchar>(i, j) = vf[k + 1];
-					}
-
+			if (isInside2(i + 1, j - 1, dstFin) == 1) {
+				a = dstFin.at<uchar>(i + 1, j - 1) + (3 * error / 16);
+				if (a > 255) {
+					dstFin.at<uchar>(i + 1, j - 1) = 255;
 				}
-			}
-		}
-
-		dstFin = dst.clone();
-
-		int a;
-		for (int i = 0; i < height - 1; i++) {
-			for (int j = 0; j < width - 1; j++) {
-				uchar oldpixel = src.at<uchar>(i, j);
-				uchar newpixel = dst.at<uchar>(i, j);
-
-				int error = oldpixel - newpixel;
-				
-				if (isInside2(i, j + 1, dstFin) == 1) {
-					a = dstFin.at<uchar>(i, j + 1) + (7 * error / 16);
-					if (a > 255) {
-						dstFin.at<uchar>(i, j + 1) = 255;
-					}
-					else if (a < 0) {
-						dstFin.at<uchar>(i, j + 1) = 0;
-					}
-					else {
-						dstFin.at<uchar>(i, j + 1) = a;
-					}
+				else if (a < 0) {
+					dstFin.at<uchar>(i + 1, j - 1) = 0;
 				}
-
-				if (isInside2(i + 1, j - 1, dstFin) == 1) {
-					a = dstFin.at<uchar>(i + 1, j - 1) + (3 * error / 16);
-					if (a > 255) {
-						dstFin.at<uchar>(i + 1, j - 1) = 255;
-					} else if (a < 0) {
-						dstFin.at<uchar>(i + 1, j - 1) = 0;
-					} else {
-						dstFin.at<uchar>(i + 1, j - 1) = a;
-					}
-				}
-
-				if (isInside2(i + 1, j, dstFin) == 1) {
-					a = dstFin.at<uchar>(i + 1, j) + (5 * error / 16);
-					if (a > 255) {
-						dstFin.at<uchar>(i + 1, j) = 255;
-					} else if (a < 0) {
-						dstFin.at<uchar>(i + 1, j) = 0;
-					} else {
-						dstFin.at<uchar>(i + 1, j) = a;
-					}
-				}
-
-				if (isInside2(i + 1, j + 1, dstFin) == 1) {
-					a = dstFin.at<uchar>(i + 1, j + 1); +(7 * error / 16);
-					if (a > 255) {
-						dstFin.at<uchar>(i + 1, j + 1) = 255;
-					} else if (a < 0) {
-						dstFin.at<uchar>(i + 1, j + 1) = 0;
-					} else {
-						dstFin.at<uchar>(i + 1, j + 1) = a;
-					}
+				else {
+					dstFin.at<uchar>(i + 1, j - 1) = a;
 				}
 			}
 
+			if (isInside2(i + 1, j, dstFin) == 1) {
+				a = dstFin.at<uchar>(i + 1, j) + (5 * error / 16);
+				if (a > 255) {
+					dstFin.at<uchar>(i + 1, j) = 255;
+				}
+				else if (a < 0) {
+					dstFin.at<uchar>(i + 1, j) = 0;
+				}
+				else {
+					dstFin.at<uchar>(i + 1, j) = a;
+				}
+			}
+
+			if (isInside2(i + 1, j + 1, dstFin) == 1) {
+				a = dstFin.at<uchar>(i + 1, j + 1); +(7 * error / 16);
+				if (a > 255) {
+					dstFin.at<uchar>(i + 1, j + 1) = 255;
+				}
+				else if (a < 0) {
+					dstFin.at<uchar>(i + 1, j + 1) = 0;
+				}
+				else {
+					dstFin.at<uchar>(i + 1, j + 1) = a;
+				}
+			}
 		}
 
+	}
 
-		showHistogram("Histograma", list, width, height);
-		cv::imshow("Praguri Multiple", dst);
-		cv::imshow("Floyd Steinberg", dstFin);
-		cv::imshow("Initial", src);
-		cv::waitKey();
+
+	showHistogram("Histograma", list, width, height);
+	cv::imshow("Praguri Multiple", dst);
+	cv::imshow("Floyd Steinberg", dstFin);
+	cv::imshow("Initial", src);
+	cv::waitKey();
 }
 
 int arieObiect(Vec3b pixel, Mat img) {
@@ -805,7 +812,7 @@ int arieObiect(Vec3b pixel, Mat img) {
 
 void centruMasaObiect(Vec3b pixel, Mat img, int arie, int* r, int* c) {
 	int rLocal = 0; int cLocal = 0;
-	
+
 	for (int i = 0; i < img.rows; i++) {
 		for (int j = 0; j < img.cols; j++) {
 			Vec3b pixelCurent = img.at<Vec3b>(i, j);
@@ -823,8 +830,8 @@ void centruMasaObiect(Vec3b pixel, Mat img, int arie, int* r, int* c) {
 float axaDeAlungire(Vec3b pixel, Mat pic, float rLocal, float cLocal) {
 	float numarator = 0.0;
 	float numitor = 0.0;
-	for (int i = 0; i < pic.rows; i++){
-		for (int j = 0; j < pic.cols; j++){
+	for (int i = 0; i < pic.rows; i++) {
+		for (int j = 0; j < pic.cols; j++) {
 			Vec3b pixelCurent = pic.at<Vec3b>(i, j);
 			if (pixel[0] == pixelCurent[0] && pixel[1] == pixelCurent[1] && pixel[2] == pixelCurent[2]) {
 				numarator += 2 * (i - rLocal) * (j - cLocal);
@@ -894,7 +901,7 @@ float aspectRatio(Vec3b pixel, Mat img) {
 			if (esteConturObiect(pixel, img, i, j) == true) rMin = i;
 		}
 	}
-	
+
 	ok = 0;
 	for (int i = img.rows; i > 0; i--) {
 		for (int j = 0; j < img.cols; j++) {
@@ -969,29 +976,29 @@ void labelImage(cv::Mat img) {
 
 	for (int i = 1; i < img.rows - 1; i++) {
 		for (int j = 1; j < img.cols - 1; j++) {
-				if (img.at<uchar>(i, j) == 0 && labels.at<int>(i, j) == 0) {
-					int di[8] = { -1, -1, -1, 0, 0, 1, 1, 1 };
-					int dj[8] = { -1, 0, 1, -1 , 1, -1, 0, 1 };
-					label++;
-					std::queue<Point2i> Q;
-					labels.at<int>(i, j) = label;
-					Q.push({ i, j });
+			if (img.at<uchar>(i, j) == 0 && labels.at<int>(i, j) == 0) {
+				int di[8] = { -1, -1, -1, 0, 0, 1, 1, 1 };
+				int dj[8] = { -1, 0, 1, -1 , 1, -1, 0, 1 };
+				label++;
+				std::queue<Point2i> Q;
+				labels.at<int>(i, j) = label;
+				Q.push({ i, j });
 
-					while (!Q.empty()) {
-						Point q = Q.front();
-						Q.pop();
+				while (!Q.empty()) {
+					Point q = Q.front();
+					Q.pop();
 
-						for (int k = 0; k < 8; k++) {
-							//Point2i neighbor(q.x + di[k], q.y + dj[k]);
-							if (isInside2(q.x + di[k], q.y + dj[k], img) == true) {
-								if (img.at<uchar>(q.x + di[k], q.y + dj[k]) == 0 && labels.at<int>(q.x + di[k], q.y + dj[k]) == 0) {
-									labels.at<int>(q.x + di[k], q.y + dj[k]) = label;
-									Q.push(Point(q.x + di[k], q.y + dj[k]));
-								}
+					for (int k = 0; k < 8; k++) {
+						//Point2i neighbor(q.x + di[k], q.y + dj[k]);
+						if (isInside2(q.x + di[k], q.y + dj[k], img) == true) {
+							if (img.at<uchar>(q.x + di[k], q.y + dj[k]) == 0 && labels.at<int>(q.x + di[k], q.y + dj[k]) == 0) {
+								labels.at<int>(q.x + di[k], q.y + dj[k]) = label;
+								Q.push(Point(q.x + di[k], q.y + dj[k]));
 							}
 						}
 					}
 				}
+			}
 		}
 	}
 
@@ -1161,8 +1168,8 @@ Mat eroziune(Mat src) {
 	int height = src.rows;
 	int width = src.cols;
 
-	int di[4] = { 0, -1,  0, 1};
-	int dj[4] = { 1,  0, -1, 0};
+	int di[4] = { 0, -1,  0, 1 };
+	int dj[4] = { 1,  0, -1, 0 };
 
 	for (int i = 1; i < height - 1; i++)
 	{
@@ -1255,7 +1262,7 @@ void medieDeviatie() {
 
 void binarizareImagine() {
 	char fname[MAX_PATH];
-	
+
 	while (openFileDlg(fname)) {
 		Mat src = imread(fname, IMREAD_GRAYSCALE);
 		int height = src.rows;
@@ -1291,7 +1298,7 @@ void binarizareImagine() {
 
 		float treshold = (iMin + iMax) / 2.0;
 		float prevTreshold;
-		do{
+		do {
 			float u1 = 0, u2 = 0;
 			float g1 = 0, g2 = 0;
 			for (int i = iMin; i < treshold; i++) {
@@ -1512,8 +1519,9 @@ int calculScalarTreceSus(int nucleu[][3])
 		{
 			if (nucleu[i][j] < 0) {
 				sum1 += abs(nucleu[i][j]);
-			} else
-			sum2 += nucleu[i][j];
+			}
+			else
+				sum2 += nucleu[i][j];
 		}
 	}
 
@@ -1675,6 +1683,329 @@ Mat sablon(Mat src) {
 	return dst;
 }
 
+void gauss_highpass() {
+
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+
+		Mat src = imread(fname, IMREAD_GRAYSCALE);
+
+		int nucleuG[3][3] = { {1, 2, 1},
+						 {2, 4, 2},
+						 {1, 2, 1} };
+		int scalarG = calculScalar(nucleuG);
+
+
+		Mat dst = convolutie(src, nucleuG, scalarG, true);
+
+
+
+
+
+		int nucleuHP[3][3] = { {-1, -1, -1},
+							 {-1,  9, -1},
+							 {-1, -1 , -1} };
+		int scalarHP = calculScalarTreceSus(nucleuHP);
+
+		Mat final = convolutie(dst, nucleuHP, scalarHP, false);
+
+		imshow("Original", src);
+		imshow("Gauss si HighPass", final);
+		waitKey(0);
+
+
+	}
+}
+
+cv::Mat filtruMedian(cv::Mat src, int dim, int a = 1) {
+	double t = (double)getTickCount();
+	cv::Mat dst = src.clone();
+
+	for (int i = dim / 2; i < src.rows - dim / 2; i++) {
+		for (int j = dim / 2; j < src.cols - dim / 2; j++) {
+			std::vector<int> vect;
+			for (int k = 0; k < dim; k++) {
+				for (int l = 0; l < dim; l++) {
+					vect.push_back(src.at<uchar>(i + k - dim / 2, j + l - dim / 2));
+				}
+			}
+			sort(vect.begin(), vect.end());
+			if (a == 1) {
+				dst.at<uchar>(i, j) = vect.at(pow(dim, 2) / 2);
+			}
+			else if (a == 2) {
+				dst.at<uchar>(i, j) = vect.front();
+			}
+			else if (a == 3) {
+				dst.at<uchar>(i, j) = vect.back();
+			}
+		}
+	}
+	t = (double)getTickCount() - t / getTickFrequency();
+	printf("\nTime = %.3f [ms] \n", t * 1000);
+	return dst;
+}
+
+float** gaussianKernel(int w, float sigma, int mid)
+{
+	float** mat = (float**)malloc(w * sizeof(float*));
+	int index, i, j;
+
+	for (index = 0; index < w; ++index)
+	{
+		mat[index] = (float*)malloc(w * sizeof(float));
+	}
+	for (i = 0; i < w; i++)
+	{
+		for (j = 0; j < w; j++)
+		{
+			float numi = 2 * PI * pow(sigma, 2);
+			float fraction = 1.0 / numi;
+			float e = (pow(i - mid, 2) + pow(j - mid, 2)) / (2 * pow(sigma, 2));
+			e = -e;
+			float val = fraction * exp(e);
+			mat[i][j] = val;
+		}
+	}
+	return mat;
+}
+
+void gaussianBidimensional() {
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat img = imread(fname, IMREAD_GRAYSCALE);
+		Mat dst = img.clone();
+		std::cout << "Introduceti o valoare dintre 3, 5 sau 7: ";
+		int w;
+		std::cin >> w;
+		float sigma = (float)w / 6;
+		int mid = w / 2;
+
+		double t = (double)getTickCount();
+		float** filter = gaussianKernel(w, sigma, mid);
+		int i, j, k, l;
+
+		for (i = w / 2; i < img.rows - w / 2; i++)
+		{
+			for (j = w / 2; j < img.cols - w / 2; j++)
+			{
+				float sum = 0;
+				for (k = 0; k < w; k++)
+				{
+					for (l = 0; l < w; l++)
+					{
+						int pixel = img.at<uchar>(i + k - w / 2, j + l - w / 2);
+						float val = filter[k][l];
+						sum += pixel * val;
+					}
+				}
+				dst.at<uchar>(i, j) = (uchar)sum;
+
+			}
+		}
+
+		t = ((double)getTickCount() - t) / getTickFrequency();
+		printf("Time = %.3f [ms]\n", t * 1000);
+
+		imshow("Original", img);
+		imshow("Filtru gaussian bidimensional", dst);
+		waitKey(0);
+
+	}
+}
+
+void gaussianBidimensionalRef(cv::Mat &img) {
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat img = imread(fname, IMREAD_GRAYSCALE);
+		Mat dst = img.clone();
+		std::cout << "Introduceti o valoare dintre 3, 5 sau 7: ";
+		int w;
+		std::cin >> w;
+		float sigma = (float)w / 6;
+		int mid = w / 2;
+
+		double t = (double)getTickCount();
+		float** filter = gaussianKernel(w, sigma, mid);
+		int i, j, k, l;
+
+		for (i = w / 2; i < img.rows - w / 2; i++)
+		{
+			for (j = w / 2; j < img.cols - w / 2; j++)
+			{
+				float sum = 0;
+				for (k = 0; k < w; k++)
+				{
+					for (l = 0; l < w; l++)
+					{
+						int pixel = img.at<uchar>(i + k - w / 2, j + l - w / 2);
+						float val = filter[k][l];
+						sum += pixel * val;
+					}
+				}
+				dst.at<uchar>(i, j) = (uchar)sum;
+
+			}
+		}
+
+		t = ((double)getTickCount() - t) / getTickFrequency();
+		printf("Time = %.3f [ms]\n", t * 1000);
+
+		imshow("Original", img);
+		imshow("Filtru gaussian bidimensional", dst);
+		waitKey(0);
+
+	}
+}
+
+void gaussianVectorial() {
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		Mat img = imread(fname, IMREAD_GRAYSCALE);
+		Mat dst = img.clone();
+		std::cout << "Introduceti o valoare dintre 3, 5 sau 7: ";
+		int w;
+		std::cin >> w;
+		float sigma = (float)w / 6;
+		int mid = w / 2;
+
+		double t = (double)getTickCount();
+		float* gx;
+		gx = (float*)calloc(w, sizeof(float));
+
+		int i, j, k;
+
+		for (i = 0; i < w; i++)
+		{
+			float numi = sqrt(2.0 * PI) * sigma;
+			float fraction = 1.0 / numi;
+			float e1 = (pow(i - mid, 2)) / (2 * pow(sigma, 2));
+			e1 = -e1;
+			float val1 = fraction * exp(e1);
+			gx[i] = val1;
+		}
+
+		for (i = w / 2; i < img.rows - w / 2; i++)
+		{
+			for (j = w / 2; j < img.cols - w / 2; j++)
+			{
+				float sum = 0;
+				for (int k = 0; k < w; k++)
+				{
+					int pixel1 = img.at<uchar>(i, j + k - w / 2);
+					float val1 = gx[k];
+					sum += pixel1 * val1;
+				}
+				dst.at<uchar>(i, j) = (uchar)sum;
+			}
+		}
+		Mat dst1 = dst.clone();
+
+		for (i = w / 2; i < img.rows - w / 2; i++)
+		{
+			for (j = w / 2; j < img.cols - w / 2; j++)
+			{
+				float sum = 0;
+				for (int k = 0; k < w; k++)
+				{
+					int pixel1 = dst.at<uchar>(i + k - w / 2, j);
+					float val1 = gx[k];
+					sum += pixel1 * val1;
+				}
+				dst1.at<uchar>(i, j) = (uchar)sum;
+			}
+		}
+
+		t = ((double)getTickCount() - t) / getTickFrequency();
+		printf("Time = %.3f [ms]\n", t * 1000);
+
+		imshow("Original", img);
+		imshow("Filtru gaussian vectorial", dst1);
+		waitKey(0);
+	}
+}
+
+cv::Mat canny() {
+	char fname[MAX_PATH];
+	while (openFileDlg(fname)) {
+		cv::Mat src = imread(fname, IMREAD_GRAYSCALE);
+
+		gaussianBidimensionalRef(src);
+
+		int gx[3][3] = { {-1, 0, 1} ,
+						 {-2, 0, 2 },
+						 {-1, 0, 1} };
+
+		int gy[3][3] = { {1, 2, 1},
+						 {0, 0, 0},
+					     {-1, -2, -1} };
+
+		cv::Mat sobelX = convolutie(src, gx, 0, false);
+		cv::Mat sobelY = convolutie(src, gy, 0, false);
+
+		cv::Mat modulGradient = src.clone();
+
+		for (int i = 0; i < src.rows; i++) {
+			for (int j = 0; j < src.cols; j++) {
+				modulGradient.at<float>(i, j) = (float)std::sqrt(std::pow(sobelX.at<float>(i, j), 2) + std::pow(sobelY.at<float>(i, j), 2));
+			}
+		}
+
+		cv::Mat directie = src.clone();
+
+		for (int i = 0; i < src.rows; i++) {
+			for (int j = 0; j < src.cols; j++) {
+				directie.at<float>(i, j) = atan2(sobelY.at<float>(i, j), sobelX.at<float>(i, j));
+			}
+		}
+
+		for (int i = 0; i < src.rows; i++) {
+			for (int j = 0; j < src.cols; j++) {
+				directie.at<float>(i, j) /= (4 * std::sqrt(2));
+			}
+		}
+
+		cv::Mat suprimat = directie.clone();
+
+		for (int i = 0; i < src.rows; i++) {
+			for (int j = 0; j < src.cols; j++) {
+				int pixel = directie.at<float>(i, j);
+				switch (pixel)
+				{
+				case 0:
+					if (modulGradient.at<float>(i, j) < modulGradient.at<float>(i - 1, j) || modulGradient.at<float>(i, j) < modulGradient.at<float>(i + 1, j)) {
+						suprimat.at<float>(i, j) = 0;
+					}
+					break;
+				case 1:
+					if (modulGradient.at<float>(i, j) < modulGradient.at<float>(i - 1, j + 1) || modulGradient.at<float>(i, j) < modulGradient.at<float>(i + 1, j - 1)) {
+						suprimat.at<float>(i, j) = 0;
+					}
+					break;
+				case 2:
+					if (modulGradient.at<float>(i, j) < modulGradient.at<float>(i, j - 1) || modulGradient.at<float>(i, j) < modulGradient.at<float>(i, j - 1)) {
+						suprimat.at<float>(i, j) = 0;
+					}
+					break;
+				case 3:
+					if (modulGradient.at<float>(i, j) < modulGradient.at<float>(i - 1, j - 1) || modulGradient.at<float>(i, j) < modulGradient.at<float>(i + 1, j + 1)) {
+						suprimat.at<float>(i, j) = 0;
+					}
+					break;
+				}
+			}
+		}
+
+
+
+	}
+}
+
+
 void testMouseClick()
 {
 	Mat src;
@@ -1746,6 +2077,10 @@ int main()
 		printf(" 35 - Filtru Gaussian\n");
 		printf(" 36 - Filtru Laplace\n");
 		printf(" 37 - Filtru Trece Sus\n");
+		printf(" 38 - Gaussian&HighPass\n");
+		printf(" 39 - Filtru Median\n");
+		printf(" 40 - Filtru Gaussian Bidimensional\n");
+		printf(" 41 - Filtru Gaussian Vectorial\n");
 		printf(" 0 - Exit\n\n");
 		printf("Option: ");
 		scanf("%d", &op);
@@ -1821,7 +2156,7 @@ int main()
 				cv::imshow("Not inside", imgNuMerge);
 				cv::waitKey(0);
 			}
-			getchar();  
+			getchar();
 			break;
 		case 20:
 			std::cout << "0 -> histograma\n1 -> FDP\n"; std::cin >> choice;
@@ -1835,7 +2170,7 @@ int main()
 		case 22:
 			floydSteinberg();
 			break;
-		case 23: 
+		case 23:
 			testMouseClick();
 			break;
 		case 24: {
@@ -1944,7 +2279,7 @@ int main()
 				imshow("Deschidere", desch1);
 				imshow("Inchidere", inch1);
 				waitKey(0);
-			} 
+			}
 		}
 
 		case 31: {
@@ -1967,7 +2302,7 @@ int main()
 			brightnessContrast(gIn, gOut, brightnessAmount);
 			break;
 		}
-		
+
 		case 34: {
 			filtruAritmetic();
 			break;
@@ -1988,6 +2323,37 @@ int main()
 			break;
 		}
 		
+		case 38: {
+			gauss_highpass();
+		}
+		
+		case 39: {
+			char fname[MAX_PATH];
+			while (openFileDlg(fname)) {
+				Mat src = imread(fname, IMREAD_GRAYSCALE);
+				std::cout << "Introduceti o valoare dintre: 3, 5 sau 7: ";
+				int val; std::cin >> val;
+				Mat dst = filtruMedian(src, val);
+				Mat dst1 = filtruMedian(src, val, 2);
+				Mat dst2 = filtruMedian(src, val, 3);
+
+				cv::imshow("Original", src);
+				cv::imshow("Filtrare", dst);
+				cv::imshow("Filtrare1", dst1);
+				cv::imshow("Filtrare2", dst2);
+
+				cv::waitKey(0);
+			}
+		}
+
+		case 40: {
+			gaussianBidimensional();
+		}
+
+		case 41: {
+			gaussianVectorial();
+		}
+
 		}
 	} while (op != 0);
 	return 0;
